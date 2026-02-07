@@ -32,6 +32,9 @@ def plot_classes(data, assignments):
     :param data: 2D array, umap_embeddings
     :param assignments: 1D array, HDBSCAN assignments
     """
+    if data.shape[1] < 3:
+        st.error('Embedding has fewer than 3 dimensions; cannot render 3D plot.')
+        return None, None
     uk = list(np.unique(assignments))
     R = np.linspace(0, 1, len(uk))
     cmap = plt.cm.get_cmap("Spectral")(R)

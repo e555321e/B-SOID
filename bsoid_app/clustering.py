@@ -93,14 +93,15 @@ class cluster:
                 self.slider(min_=float(self.min_cluster_size[0]), max_=float(self.min_cluster_size[-1]))
                 self.hierarchy()
                 self.save()
-            if st.checkbox("Show first 3D UMAP enhanced clustering plot?", True, key='cs'):
+            if st.checkbox("Show first 3D embedding clustering plot?", True, key='cs'):
                 self.show_classes()
         except (AttributeError, FileNotFoundError) as e:
             self.slider()
             self.hierarchy()
             self.save()
-            if st.checkbox("Show first 3D UMAP enhanced clustering plot?", True, key='cs'):
+            if st.checkbox("Show first 3D embedding clustering plot?", True, key='cs'):
                 self.show_classes()
+
 
 
 
