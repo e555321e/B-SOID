@@ -9,6 +9,7 @@ import streamlit as st
 import umap
 from psutil import virtual_memory
 from sklearn.decomposition import PCA
+from sklearn.manifold import SpectralEmbedding
 from sklearn.preprocessing import StandardScaler
 from streamlit import caching
 
@@ -30,6 +31,7 @@ class extract:
         self.scaled_features = []
         self.sampled_features = []
         self.sampled_embeddings = []
+        self.embedding_method = 'UMAP'
 
     def subsample(self):
         data_size = 0
@@ -45,6 +47,9 @@ class extract:
             self.train_size = int(data_size * fraction)
         st.markdown('You have opted to train on a cumulative of **{} minutes** total. '
                     'If this does not sound right, the framerate might be wrong.'.format(self.train_size / 600))
+        self.embedding_method = st.selectbox('选择降维算法 (Dimensionality reduction method):',
+                                              ['UMAP', 'SUDE'],
+                                              index=0)
 
     def compute(self):
         if st.button("__Extract Features__"):
@@ -153,23 +158,34 @@ class extract:
         mem = virtual_memory()
         available_mb = mem.available >> 20
         st.write('You have {} MB RAM 🐏 available'.format(available_mb))
-        if available_mb > (sampled_input_feats.shape[0] * sampled_input_feats.shape[1] * 32 * 60) / 1024 ** 2 + 64:
-            st.write('RAM 🐏 available is sufficient')
+        if self.embedding_method == 'SUDE':
+            st.info('Using SUDE for dimensionality reduction.')
             try:
-                learned_embeddings = umap.UMAP(n_neighbors=60, n_components=num_dimensions,
-                                               **UMAP_PARAMS).fit(sampled_input_feats)
+                self.sampled_embeddings = SpectralEmbedding(n_components=num_dimensions,
+                                                            **SUDE_PARAMS).fit_transform(sampled_input_feats)
             except:
-                st.error('Failed on feature embedding. Try again by unchecking sidebar and rerunning extract features.')
+                st.error('Failed on SUDE embedding. Try again by unchecking sidebar and rerunning extract features.')
+                return
         else:
-            st.info(
-                'Detecting that you are running low on available memory for this computation, '
-                'setting low_memory so will take longer.')
-            try:
-                learned_embeddings = umap.UMAP(n_neighbors=60, n_components=num_dimensions, low_memory=True,
-                                               **UMAP_PARAMS).fit(sampled_input_feats)
-            except:
-                st.error('Failed on feature embedding. Try again by unchecking sidebar and rerunning extract features.')
-        self.sampled_embeddings = learned_embeddings.embedding_
+            if available_mb > (sampled_input_feats.shape[0] * sampled_input_feats.shape[1] * 32 * 60) / 1024 ** 2 + 64:
+                st.write('RAM 🐏 available is sufficient')
+                try:
+                    learned_embeddings = umap.UMAP(n_neighbors=60, n_components=num_dimensions,
+                                                   **UMAP_PARAMS).fit(sampled_input_feats)
+                except:
+                    st.error('Failed on UMAP embedding. Try again by unchecking sidebar and rerunning extract features.')
+                    return
+            else:
+                st.info(
+                    'Detecting that you are running low on available memory for this computation, '
+                    'setting low_memory so will take longer.')
+                try:
+                    learned_embeddings = umap.UMAP(n_neighbors=60, n_components=num_dimensions, low_memory=True,
+                                                   **UMAP_PARAMS).fit(sampled_input_feats)
+                except:
+                    st.error('Failed on UMAP embedding. Try again by unchecking sidebar and rerunning extract features.')
+                    return
+            self.sampled_embeddings = learned_embeddings.embedding_
         st.info(
             'Done non-linear embedding of {} instances from **{}** D into **{}** D.'.format(
                 *self.sampled_features.shape, self.sampled_embeddings.shape[1]))
